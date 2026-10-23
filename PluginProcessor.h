@@ -1,7 +1,7 @@
 #pragma once
-#include JuceHeader.h
-#include ChromaExtractor.h
-#include KeyClassifier.h
+#include <JuceHeader.h>
+#include "ChromaExtractor.h"
+#include "KeyClassifier.h"
 
 class SampleKeyFinderAudioProcessor   public juceAudioProcessor
 {
