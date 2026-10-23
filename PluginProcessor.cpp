@@ -13,7 +13,6 @@ SampleKeyFinderAudioProcessor::SampleKeyFinderAudioProcessor()
                        )
 #endif
 {
-    formatManager.registerBasicFormats();
 }
 
 SampleKeyFinderAudioProcessor::~SampleKeyFinderAudioProcessor()
@@ -58,18 +57,6 @@ void SampleKeyFinderAudioProcessor::getStateInformation (juce::MemoryBlock& dest
 
 void SampleKeyFinderAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-}
-
-void SampleKeyFinderAudioProcessor::analyzeAudioFile (const juce::File& file)
-{
-    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
-    if (reader != nullptr)
-    {
-        juce::AudioBuffer<float> buffer (static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples));
-        reader->read (&buffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
-        chromaExtractor.process (buffer);
-        currentKey = juce::String (keyClassifier.detectKey (chromaExtractor.getChromaVector()));
-    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
