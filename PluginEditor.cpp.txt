@@ -1,0 +1,50 @@
+#include "PluginProcessor.h"
+#include "PluginEditor.h"
+
+SampleKeyFinderAudioProcessorEditor::SampleKeyFinderAudioProcessorEditor (SampleKeyFinderAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p)
+{
+    setSize (400, 250);
+
+    resultLabel.setText(audioProcessor.getDetectedKey(), juce::dontSendNotification);
+    resultLabel.setFont(juce::FontOptions(22.0f, juce::Font::bold));
+    resultLabel.setJustificationType(juce::Justification::centred);
+    resultLabel.setColour(juce::Label::textColourId, juce::Colours::cyan);
+    addAndMakeVisible(resultLabel);
+}
+
+SampleKeyFinderAudioProcessorEditor::~SampleKeyFinderAudioProcessorEditor() {}
+
+void SampleKeyFinderAudioProcessorEditor::paint (juce::Graphics& g)
+{
+    g.fillAll (juce::Colour(0xff1e1e24));
+    g.setColour (juce::Colours::white);
+    g.setFont (juce::FontOptions(16.0f));
+    g.drawFittedText ("Arrasta e solta um Sample Audio (.wav/.mp3)", getLocalBounds().removeFromTop(60), juce::Justification::centred, 1);
+}
+
+void SampleKeyFinderAudioProcessorEditor::resized()
+{
+    resultLabel.setBounds(20, 100, getWidth() - 40, 60);
+}
+
+bool SampleKeyFinderAudioProcessorEditor::isInterestedInFileDrag (const juce::StringArray& files)
+{
+    for (auto file : files)
+    {
+        if (file.endsWithIgnoreCase(".wav") || file.endsWithIgnoreCase(".mp3") || file.endsWithIgnoreCase(".aif"))
+            return true;
+    }
+    return false;
+}
+
+void SampleKeyFinderAudioProcessorEditor::filesDropped (const juce::StringArray& files, int x, int y)
+{
+    if (files.size() > 0)
+    {
+        juce::File sampleFile(files[0]);
+        audioProcessor.analyzeAudioFile(sampleFile);
+        resultLabel.setText(audioProcessor.getDetectedKey(), juce::dontSendNotification);
+        repaint();
+    }
+}
