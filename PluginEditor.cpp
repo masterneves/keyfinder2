@@ -1,50 +1,78 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-SampleKeyFinderAudioProcessorEditor::SampleKeyFinderAudioProcessorEditor (SampleKeyFinderAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+SampleKeyFinderAudioProcessor::SampleKeyFinderAudioProcessor()
+#ifndef JucePlugin_PreferredChannelConfigurations
+     : AudioProcessor (BusesProperties()
+                     #if ! JucePlugin_IsMidiEffect
+                      #if ! JucePlugin_IsSynth
+                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                      #endif
+                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                     #endif
+                       )
+#endif
 {
-    setSize (400, 250);
-
-    resultLabel.setText(audioProcessor.getDetectedKey(), juce::dontSendNotification);
-    resultLabel.setFont(juce::FontOptions(22.0f, juce::Font::bold));
-    resultLabel.setJustificationType(juce::Justification::centred);
-    resultLabel.setColour(juce::Label::textColourId, juce::Colours::cyan);
-    addAndMakeVisible(resultLabel);
+    formatManager.registerBasicFormats();
 }
 
-SampleKeyFinderAudioProcessorEditor::~SampleKeyFinderAudioProcessorEditor() {}
-
-void SampleKeyFinderAudioProcessorEditor::paint (juce::Graphics& g)
+SampleKeyFinderAudioProcessor::~SampleKeyFinderAudioProcessor()
 {
-    g.fillAll (juce::Colour(0xff1e1e24));
-    g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions(16.0f));
-    g.drawFittedText ("Arrasta e solta um Sample Audio (.wav/.mp3)", getLocalBounds().removeFromTop(60), juce::Justification::centred, 1);
 }
 
-void SampleKeyFinderAudioProcessorEditor::resized()
+void SampleKeyFinderAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    resultLabel.setBounds(20, 100, getWidth() - 40, 60);
+    chromaExtractor.prepare (sampleRate, samplesPerBlock);
 }
 
-bool SampleKeyFinderAudioProcessorEditor::isInterestedInFileDrag (const juce::StringArray& files)
+void SampleKeyFinderAudioProcessor::releaseResources()
 {
-    for (auto file : files)
+}
+
+bool SampleKeyFinderAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+
+    return true;
+}
+
+void SampleKeyFinderAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+{
+    juce::ScopedNoDenormals noDenormals;
+    
+    chromaExtractor.process (buffer);
+    std::string key = keyClassifier.detectKey (chromaExtractor.getChromaVector());
+    currentKey = juce::String (key);
+}
+
+juce::AudioProcessorEditor* SampleKeyFinderAudioProcessor::createEditor()
+{
+    return new SampleKeyFinderAudioProcessorEditor (*this);
+}
+
+void SampleKeyFinderAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+}
+
+void SampleKeyFinderAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+}
+
+void SampleKeyFinderAudioProcessor::analyzeAudioFile (const juce::File& file)
+{
+    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
+    if (reader != nullptr)
     {
-        if (file.endsWithIgnoreCase(".wav") || file.endsWithIgnoreCase(".mp3") || file.endsWithIgnoreCase(".aif"))
-            return true;
+        juce::AudioBuffer<float> buffer (static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples));
+        reader->read (&buffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
+        chromaExtractor.process (buffer);
+        currentKey = juce::String (keyClassifier.detectKey (chromaExtractor.getChromaVector()));
     }
-    return false;
 }
 
-void SampleKeyFinderAudioProcessorEditor::filesDropped (const juce::StringArray& files, int x, int y)
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    if (files.size() > 0)
-    {
-        juce::File sampleFile(files[0]);
-        audioProcessor.analyzeAudioFile(sampleFile);
-        resultLabel.setText(audioProcessor.getDetectedKey(), juce::dontSendNotification);
-        repaint();
-    }
+    return new SampleKeyFinderAudioProcessor();
 }
