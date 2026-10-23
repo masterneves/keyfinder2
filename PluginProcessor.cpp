@@ -49,7 +49,7 @@ void SampleKeyFinderAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
 
 juce::AudioProcessorEditor* SampleKeyFinderAudioProcessor::createEditor()
 {
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new SampleKeyFinderAudioProcessorEditor (*this);
 }
 
 void SampleKeyFinderAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
