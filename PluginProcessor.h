@@ -41,7 +41,7 @@ public:
 private:
     ChromaExtractor chromaExtractor;
     KeyClassifier keyClassifier;
-    juce::String currentKey { "A aguardar áudio..." };
+    juce::String currentKey { "A AGUARDAR ÁUDIO..." };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleKeyFinderAudioProcessor)
 };
