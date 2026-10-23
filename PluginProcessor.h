@@ -36,9 +36,15 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Métodos chamados pelo PluginEditor
+    juce::String getDetectedKey() const { return currentKey; }
+    void analyzeAudioFile (const juce::File& file);
+
 private:
     ChromaExtractor chromaExtractor;
     KeyClassifier keyClassifier;
+    juce::AudioFormatManager formatManager;
+    juce::String currentKey { "Aguardando áudio..." };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SampleKeyFinderAudioProcessor)
 };
