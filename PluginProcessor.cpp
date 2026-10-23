@@ -4,22 +4,30 @@
 SampleKeyFinderAudioProcessor::SampleKeyFinderAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
+                     #if ! JucePlugin_IsMidiEffect
+                      #if ! JucePlugin_IsSynth
                        .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                      #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                     #endif
                        )
 #endif
 {
     formatManager.registerBasicFormats();
 }
 
-SampleKeyFinderAudioProcessor::~SampleKeyFinderAudioProcessor() {}
+SampleKeyFinderAudioProcessor::~SampleKeyFinderAudioProcessor()
+{
+}
 
 void SampleKeyFinderAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    chromaExtractor.prepare(sampleRate);
+    chromaExtractor.prepare (sampleRate, samplesPerBlock);
 }
 
-void SampleKeyFinderAudioProcessor::releaseResources() {}
+void SampleKeyFinderAudioProcessor::releaseResources()
+{
+}
 
 bool SampleKeyFinderAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
@@ -33,36 +41,40 @@ bool SampleKeyFinderAudioProcessor::isBusesLayoutSupported (const BusesLayout& l
 void SampleKeyFinderAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+    
+    chromaExtractor.process (buffer);
+    std::string key = keyClassifier.detectKey (chromaExtractor.getChromaVector());
+    currentKey = juce::String (key);
 }
 
-void SampleKeyFinderAudioProcessor::analyzeAudioFile(const juce::File& file)
+bool SampleKeyFinderAudioProcessor::hasEditor() const
 {
-    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
-    if (reader != nullptr)
-    {
-        juce::AudioBuffer<float> buffer((int)reader->numChannels, (int)reader->lengthInSamples);
-        reader->read(&buffer, 0, (int)reader->lengthInSamples, 0, true, true);
-        
-        chromaExtractor.reset();
-        chromaExtractor.processBuffer(buffer);
-        auto chromaVector = chromaExtractor.getChromaVector();
-        
-        detectedKey = keyClassifier.classifyKey(chromaVector);
-    }
-    else
-    {
-        detectedKey = "Erro ao carregar ficheiro!";
-    }
+    return true;
 }
 
 juce::AudioProcessorEditor* SampleKeyFinderAudioProcessor::createEditor()
 {
-    return new SampleKeyFinderAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor (*this);
+}
+
+void SampleKeyFinderAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+}
+
+void SampleKeyFinderAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+}
+
+void SampleKeyFinderAudioProcessor::analyzeAudioFile (const juce::File& file)
+{
+    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
+    if (reader != nullptr)
+    {
+        juce::AudioBuffer<float> buffer (static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples));
+        reader->read (&buffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
+        chromaExtractor.process (buffer);
+        currentKey = juce::String (keyClassifier.detectKey (chromaExtractor.getChromaVector()));
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
