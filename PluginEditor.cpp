@@ -1,78 +1,47 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-SampleKeyFinderAudioProcessor::SampleKeyFinderAudioProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
-#endif
+SampleKeyFinderAudioProcessorEditor::SampleKeyFinderAudioProcessorEditor (SampleKeyFinderAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    formatManager.registerBasicFormats();
+    setSize (400, 200);
+
+    titleLabel.setText ("KEY SCALE DETECTOR", juce::dontSendNotification);
+    titleLabel.setFont (juce::FontOptions (18.0f, juce::Font::bold));
+    titleLabel.setJustificationType (juce::Justification::centred);
+    titleLabel.setColour (juce::Label::textColourId, juce::Colours::cyan);
+    addAndMakeVisible (titleLabel);
+
+    keyLabel.setText ("A aguardar áudio...", juce::dontSendNotification);
+    keyLabel.setFont (juce::FontOptions (28.0f, juce::Font::bold));
+    keyLabel.setJustificationType (juce::Justification::centred);
+    keyLabel.setColour (juce::Label::textColourId, juce::Colours::white);
+    addAndMakeVisible (keyLabel);
+
+    startTimerHz (10); // Atualiza o ecrã 10 vezes por segundo com a tonalidade detetada
 }
 
-SampleKeyFinderAudioProcessor::~SampleKeyFinderAudioProcessor()
+SampleKeyFinderAudioProcessorEditor::~SampleKeyFinderAudioProcessorEditor()
 {
+    stopTimer();
 }
 
-void SampleKeyFinderAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void SampleKeyFinderAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    chromaExtractor.prepare (sampleRate, samplesPerBlock);
+    g.fillAll (juce::Colour (0xff1e1e24));
 }
 
-void SampleKeyFinderAudioProcessor::releaseResources()
+void SampleKeyFinderAudioProcessorEditor::resized()
 {
+    titleLabel.setBounds (0, 20, getWidth(), 30);
+    keyLabel.setBounds (0, 80, getWidth(), 50);
 }
 
-bool SampleKeyFinderAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+void SampleKeyFinderAudioProcessorEditor::timerCallback()
 {
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-
-    return true;
-}
-
-void SampleKeyFinderAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    juce::ScopedNoDenormals noDenormals;
-    
-    chromaExtractor.process (buffer);
-    std::string key = keyClassifier.detectKey (chromaExtractor.getChromaVector());
-    currentKey = juce::String (key);
-}
-
-juce::AudioProcessorEditor* SampleKeyFinderAudioProcessor::createEditor()
-{
-    return new SampleKeyFinderAudioProcessorEditor (*this);
-}
-
-void SampleKeyFinderAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
-{
-}
-
-void SampleKeyFinderAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
-{
-}
-
-void SampleKeyFinderAudioProcessor::analyzeAudioFile (const juce::File& file)
-{
-    std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
-    if (reader != nullptr)
+    juce::String key = audioProcessor.getCurrentKey();
+    if (key.isNotEmpty())
     {
-        juce::AudioBuffer<float> buffer (static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples));
-        reader->read (&buffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
-        chromaExtractor.process (buffer);
-        currentKey = juce::String (keyClassifier.detectKey (chromaExtractor.getChromaVector()));
+        keyLabel.setText (key, juce::dontSendNotification);
     }
-}
-
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
-{
-    return new SampleKeyFinderAudioProcessor();
 }
