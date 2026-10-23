@@ -47,6 +47,7 @@ target_compile_definitions(KeyScaleDetector
 
 target_link_libraries(KeyScaleDetector
     PRIVATE
+        juce::juce_dsp
         juce::juce_audio_utils
         juce::juce_audio_processors
         juce::juce_gui_extra
