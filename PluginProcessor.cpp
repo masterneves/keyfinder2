@@ -47,11 +47,6 @@ void SampleKeyFinderAudioProcessor::processBlock (juce::AudioBuffer<float>& buff
     currentKey = juce::String (key);
 }
 
-bool SampleKeyFinderAudioProcessor::hasEditor() const
-{
-    return true;
-}
-
 juce::AudioProcessorEditor* SampleKeyFinderAudioProcessor::createEditor()
 {
     return new juce::GenericAudioProcessorEditor (*this);
